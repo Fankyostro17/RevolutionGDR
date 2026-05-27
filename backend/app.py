@@ -1,3 +1,5 @@
+from urllib import request
+
 from flask import Flask, jsonify
 from flask_cors import CORS
 from config import Config
@@ -5,6 +7,7 @@ from database import Database
 from routes.auth import auth_bp
 from routes.adventures import adventures_bp
 import logging
+from flask_socketio import SocketIO, emit, join_room
 
 # Configura logging
 logging.basicConfig(
@@ -17,18 +20,14 @@ def create_app():
     app = Flask(__name__)
     app.config['JSON_SORT_KEYS'] = False
     
-    # CORS per Flutter (localhost in dev)
     CORS(app, resources={r"/api/*": {"origins": Config.CORS_ORIGINS}})
     
-    # Registra blueprint
     app.register_blueprint(auth_bp)
     app.register_blueprint(adventures_bp)
     
-    # Health check endpoint
     @app.route('/api/health', methods=['GET'])
     def health():
         try:
-            # Testa connessione DB
             conn = Database.get_connection()
             conn.close()
             return jsonify({'status': 'healthy', 'database': 'connected'}), 200
@@ -36,7 +35,6 @@ def create_app():
             logger.error(f"Health check failed: {e}")
             return jsonify({'status': 'unhealthy', 'error': str(e)}), 503
     
-    # Error handler globale
     @app.errorhandler(404)
     def not_found(e):
         return jsonify({'error': 'Endpoint non trovato'}), 404
@@ -51,10 +49,35 @@ def create_app():
 
 app = create_app()
 
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+@socketio.on('connect')
+def on_connect():
+    print(f'🔗 Client connesso: {request.sid}')
+
+@socketio.on('join_session')
+def on_join_session(data):
+    adventure_id = data.get('adventure_id')
+    user_name = data.get('user_name', 'Sconosciuto')
+    join_room(adventure_id)
+    print(f'👤 {user_name} entrato in sessione {adventure_id}')
+    emit('system_message', {'content': f'{user_name} si è unito alla sessione'}, room=adventure_id)
+
+@socketio.on('host_toggle')
+def on_host_toggle(data):
+    adventure_id = data.get('adventure_id')
+    is_hosting = data.get('is_hosting')
+    emit('host_status', {'is_hosting': is_hosting}, room=adventure_id)
+
+@socketio.on('send_message')
+def on_send_message(data):
+    adventure_id = data.get('adventure_id')
+    emit('new_message', data, room=adventure_id, include_self=False)
+
+@socketio.on('disconnect')
+def on_disconnect():
+    print(f'🔌 Client disconnesso: {request.sid}')
+
 if __name__ == '__main__':
     logger.info(f"🔧 Ambiente: {Config.FLASK_ENV}, Debug: {Config.FLASK_DEBUG}")
-    app.run(
-        host='0.0.0.0',
-        port=8000,
-        debug=Config.FLASK_DEBUG
-    )
+    socketio.run(app, host='0.0.0.0', port=8000, debug=Config.FLASK_DEBUG, allow_unsafe_werkzeug=True)

@@ -7,6 +7,7 @@ import '../models/user.dart';
 import 'login_screen.dart';
 import 'create_campaign_screen.dart';
 import 'campaign_detail_screen.dart';
+import 'join_campaign_screen.dart'; // ← Nuova schermata per unirsi (la creiamo dopo)
 
 class MainDashboardScreen extends StatefulWidget {
   const MainDashboardScreen({super.key});
@@ -128,6 +129,29 @@ class _MainDashboardScreenState extends State<MainDashboardScreen>
     }
   }
 
+  Future<void> _navigateToJoinCampaign() async {
+    if (!_isLoggedIn) {
+      _navigateToLogin();
+      return;
+    }
+    
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const JoinCampaignScreen()),
+    );
+    
+    if (result == true && mounted) {
+      await _fetchAdventures();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Unitto alla campagna!'),
+          backgroundColor: Color(0xFF00C853),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   Future<void> _navigateToCampaignDetail(String adventureId) async {
     final result = await Navigator.push<bool>(
       context,
@@ -169,7 +193,21 @@ class _MainDashboardScreenState extends State<MainDashboardScreen>
               style: TextStyle(color: Colors.white54, fontSize: 16),
             ),
             const SizedBox(height: 24),
-            if (isMasterView)
+            
+            // 🔹 FIX #1 e #2: Bottone condizionale basato su login e ruolo
+            if (!_isLoggedIn)
+              // ❌ Non loggato: mostra "Accedi per unirti" per entrambi
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00B0FF),
+                  foregroundColor: Colors.black,
+                ),
+                onPressed: _navigateToLogin,
+                icon: const Icon(Icons.login),
+                label: const Text('Accedi per unirti'),
+              )
+            else if (isMasterView)
+              // ✅ Loggato + Master: mostra "Crea Campagna"
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF00B0FF),
@@ -180,14 +218,15 @@ class _MainDashboardScreenState extends State<MainDashboardScreen>
                 label: const Text('Crea Campagna'),
               )
             else
+              // ✅ Loggato + Player: mostra "Accedi alla Campagna" (con codice)
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF00B0FF),
                   foregroundColor: Colors.black,
                 ),
-                onPressed: _navigateToLogin,
-                icon: const Icon(Icons.login),
-                label: const Text('Accedi per unirti'),
+                onPressed: _navigateToJoinCampaign,
+                icon: const Icon(Icons.qr_code),
+                label: const Text('Accedi alla Campagna'),
               ),
           ],
         ),
@@ -198,7 +237,8 @@ class _MainDashboardScreenState extends State<MainDashboardScreen>
       padding: const EdgeInsets.symmetric(vertical: 16),
       itemCount: adventures.length + (isMasterView ? 1 : 0),
       itemBuilder: (ctx, index) {
-        if (isMasterView && index == adventures.length) {
+        // 🔹 Pulsante "Nuova Campagna" o "Unisciti" in fondo alla lista
+        if (index == adventures.length) {
           return Padding(
             padding: const EdgeInsets.all(16),
             child: OutlinedButton.icon(
@@ -210,9 +250,11 @@ class _MainDashboardScreenState extends State<MainDashboardScreen>
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onPressed: _navigateToCreateCampaign,
-              icon: const Icon(Icons.add),
-              label: const Text('Nuova Campagna'),
+              onPressed: isMasterView 
+                ? _navigateToCreateCampaign 
+                : _navigateToJoinCampaign, // ← Player: unisciti con codice
+              icon: Icon(isMasterView ? Icons.add : Icons.qr_code),
+              label: Text(isMasterView ? 'Nuova Campagna' : 'Unisciti con Codice'),
             ),
           );
         }
@@ -224,22 +266,17 @@ class _MainDashboardScreenState extends State<MainDashboardScreen>
           subtitle: adventure.subtitle,
           description: adventure.description,
           role: adventure.role,
-          
           nextSession: adventure.nextSession,
           lastSession: adventure.lastSession,
-          
           levelMin: adventure.levelMin,
           levelMax: adventure.levelMax,
           maxPlayers: adventure.maxPlayers,
           currentPlayers: adventure.currentPlayers,
           joinCode: adventure.joinCode,
           isOneShot: adventure.isOneShot,
-          
           adventureId: adventure.id,
           createdBy: adventure.createdBy,
           status: adventure.status,
-          
-          // 🔹 Lock e interazione
           isLocked: adventure.status == AdventureStatus.locked || adventure.status == AdventureStatus.ended,
           onTap: adventure.isAccessible ? () {
             _navigateToCampaignDetail(adventure.id);
@@ -258,6 +295,10 @@ class _MainDashboardScreenState extends State<MainDashboardScreen>
         centerTitle: true,
         backgroundColor: const Color(0xFF1A1A2E),
         elevation: 0,
+        
+        // 🔹 FIX #3: Rimuovi la freccia indietro quando loggato
+        leading: _isLoggedIn ? null : null, // ← null = nessun leading, niente freccia
+        
         actions: [
           if (_isLoggedIn && _user != null)
             Padding(

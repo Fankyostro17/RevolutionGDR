@@ -1,4 +1,6 @@
+from database import Database
 from flask import Blueprint, request, jsonify
+import uuid
 from models.adventure import AdventureModel
 from utils.jwt_handler import JWTHandler
 from models.user import UserModel
@@ -106,6 +108,85 @@ def join_adventure(adventure_id: str):
     
     return jsonify({'error': 'Impossibile unirsi'}), 500
 
+# 🔹 POST /api/adventures/join-by-code - Unisciti a campagna tramite solo codice
+@adventures_bp.route('/join-by-code', methods=['POST'])
+def join_by_code():
+    """
+    Permette a un Player di unirsi a una campagna usando SOLO il codice.
+    Il sistema cerca automaticamente la campagna associata al codice.
+    """
+    # 1. Verifica autenticazione
+    auth_header = request.headers.get('Authorization')
+    token = JWTHandler.token_from_header(auth_header)
+    if not token:
+        return jsonify({'error': 'Token mancante'}), 401
+    
+    payload = JWTHandler.verify_token(token)
+    if not payload:
+        return jsonify({'error': 'Token non valido o scaduto'}), 401
+    
+    user_id = payload['user_id']
+    
+    # 2. Estrai il codice dal body della richiesta
+    data = request.get_json()
+    if not data or 'campaign_code' not in data:
+        return jsonify({'error': 'Codice campagna obbligatorio'}), 400
+    
+    campaign_code = data['campaign_code'].strip().upper()
+    
+    # 3. Cerca la campagna nel DB tramite join_code
+    query = f"""
+        SELECT id, title, status, max_players, join_code, created_by,
+               (SELECT COUNT(*) FROM {AdventureModel.PARTICIPANTS_TABLE} WHERE adventure_id = adventures.id) as current_players
+        FROM {AdventureModel.TABLE}
+        WHERE join_code = %s
+    """
+    result = Database.execute_query(query, (campaign_code,))
+    
+    if not result:
+        return jsonify({'error': 'Codice non valido. Campagna non trovata.'}), 404
+    
+    adventure = result[0]
+    
+    if adventure['status'] in ['ended', 'locked']:
+        return jsonify({'error': 'Questa campagna non è più accessibile'}), 403
+    
+    if adventure['created_by'] == user_id:
+        return jsonify({'error': 'Sei il Master di questa campagna. Accedi dalla tab Master.'}), 400
+    
+    if adventure['max_players'] and adventure['current_players'] >= adventure['max_players']:
+        return jsonify({'error': 'Campagna piena. Nessun posto disponibile.'}), 409
+    
+    try:
+        check_query = f"""
+            SELECT id FROM {AdventureModel.PARTICIPANTS_TABLE}
+            WHERE adventure_id = %s AND user_id = %s
+        """
+        existing = Database.execute_query(check_query, (adventure['id'], user_id))
+        
+        if existing:
+            return jsonify({'message': 'Sei già unito a questa campagna', 'adventure_id': adventure['id']}), 200
+        
+        participation_id = str(uuid.uuid4())
+        insert_query = f"""
+            INSERT INTO {AdventureModel.PARTICIPANTS_TABLE} 
+            (id, adventure_id, user_id, joined_at)
+            VALUES (%s, %s, %s, NOW())
+        """
+        Database.execute_query(insert_query, (participation_id, adventure['id'], user_id), fetch=False)
+        
+        _format_dates_for_flutter(adventure)
+        
+        return jsonify({
+            'message': '✅ Unitto alla campagna con successo!',
+            'adventure_id': adventure['id'],
+            'adventure': adventure
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Errore join_by_code: {e}")
+        return jsonify({'error': 'Impossibile unirsi alla campagna. Riprova.'}), 500
+
 @adventures_bp.route('/<adventure_id>', methods=['GET'])
 def get_adventure_detail(adventure_id):
     auth_header = request.headers.get('Authorization')
@@ -157,47 +238,40 @@ def delete_adventure(adventure_id):
 def toggle_status(adventure_id):
     auth_header = request.headers.get('Authorization')
     token = JWTHandler.token_from_header(auth_header)
-    if not token: return jsonify({'error': 'Token mancante'}), 401
+    if not token: 
+        return jsonify({'error': 'Token mancante'}), 401
+    
     payload = JWTHandler.verify_token(token)
-    if not payload: return jsonify({'error': 'Token non valido'}), 401
+    if not payload: 
+        return jsonify({'error': 'Token non valido'}), 401
     
     adv = AdventureModel.get_by_id(adventure_id)
     if not adv or adv.get('created_by') != payload['user_id']:
         return jsonify({'error': 'Non autorizzato'}), 403
     
-    new_status = 'ended' if adv['status'] == 'active' else 'active'
+    current_status = adv.get('status', 'active')
+    new_status = 'ended' if current_status == 'active' else 'active'
+    
     updated = AdventureModel.update(adventure_id, payload['user_id'], status=new_status)
+    if not updated:
+        return jsonify({'error': 'Update fallito'}), 500
+    
     _format_dates_for_flutter(updated)
     return jsonify({'message': 'Stato aggiornato', 'adventure': updated}), 200
 
 def _format_dates_for_flutter(data: dict) -> dict:
-    """
-    Converte tutti i campi data in formato ISO 8601 (YYYY-MM-DDTHH:MM:SS)
-    che Flutter può parsare con DateTime.parse()
-    """
+    """Converte datetime → stringa ISO 8601 per Flutter"""
     date_fields = ['created_at', 'updated_at', 'next_session', 'last_session', 'date_of_birth']
-    
     for field in date_fields:
         if field in data and data[field] is not None:
             value = data[field]
-            # Se è un oggetto datetime, convertilo
             if hasattr(value, 'isoformat'):
                 data[field] = value.isoformat()
-            # Se è già una stringa ma nel formato sbagliato, prova a parsare e riformattare
-            elif isinstance(value, str):
+            elif isinstance(value, str) and 'GMT' in value:
+                from email.utils import parsedate_to_datetime
                 try:
-                    # Prova a parsare e riformattare in ISO
-                    from datetime import datetime
-                    # Gestione formati comuni di MariaDB/MySQL
-                    for fmt in ['%a, %d %b %Y %H:%M:%S GMT', '%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S']:
-                        try:
-                            dt = datetime.strptime(value, fmt)
-                            data[field] = dt.isoformat()
-                            break
-                        except ValueError:
-                            continue
+                    dt = parsedate_to_datetime(value)
+                    data[field] = dt.isoformat()
                 except:
-                    # Se non riesci a parsare, lascia la stringa originale
                     pass
-    
     return data

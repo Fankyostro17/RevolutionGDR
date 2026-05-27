@@ -229,11 +229,18 @@ class AdventureCard extends StatelessWidget {
                             ),
                           
                           // 🔹 Stato Ended
-                          if (status == AdventureStatus.ended)
+                          /*if (status == AdventureStatus.ended)
                             _InfoChip(
                               icon: Icons.flag,
                               label: 'ENDED',
                               color: Colors.redAccent,
+                            ),*/
+
+                          if (!isLocked && status != AdventureStatus.active)
+                            _InfoChip(
+                              icon: status == AdventureStatus.ended ? Icons.flag : Icons.pause,
+                              label: status.toString().split('.').last.toUpperCase(),
+                              color: status == AdventureStatus.ended ? Colors.redAccent : Colors.orange,
                             ),
                         ],
                       ),

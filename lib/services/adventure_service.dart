@@ -76,24 +76,31 @@ class AdventureService {
     }
   }
 
-  // 🔹 Unisciti a una campagna come player (tramite codice)
   static Future<bool> joinCampaign({
-    required String adventureId,
-    String? campaignCode,
+    required String campaignCode,
   }) async {
     final authService = AuthService();
     if (!authService.isAuthenticated) return false;
     
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/adventures/$adventureId/join'),
+        Uri.parse('$_baseUrl/adventures/join-by-code'),
         headers: authService.authHeaders,
-        body: jsonEncode({'campaign_code': campaignCode}),
+        body: jsonEncode({
+          'campaign_code': campaignCode.trim().toUpperCase(),
+        }),
       ).timeout(const Duration(seconds: 10));
       
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        return true;
+      }
+      
+      final errorData = jsonDecode(response.body);
+      print('❌ Join fallito: ${errorData['error']}');
+      return false;
+      
     } catch (e) {
-      print('❌ Errore join: $e');
+      print('❌ Errore di rete join: $e');
       return false;
     }
   }

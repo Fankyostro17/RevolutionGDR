@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/adventure.dart';
 import '../services/adventure_service.dart';
 import '../services/auth_service.dart';
+import 'game_session_screen.dart';
 
 class CampaignDetailScreen extends StatefulWidget {
   final String adventureId;
@@ -22,6 +23,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
 
   // 🔹 Controllers per i TextField in modalità modifica
   late TextEditingController _titleCtrl;
+  late TextEditingController _subtitleCtrl;
   late TextEditingController _descCtrl;
   late TextEditingController _minLvlCtrl;
   late TextEditingController _maxLvlCtrl;
@@ -40,6 +42,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
   @override
   void dispose() {
     _titleCtrl.dispose();
+    _subtitleCtrl.dispose();
     _descCtrl.dispose();
     _minLvlCtrl.dispose();
     _maxLvlCtrl.dispose();
@@ -47,7 +50,6 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
     super.dispose();
   }
 
-  // 🔹 Carica i dati della campagna dal backend
   Future<void> _load() async {
     final a = await AdventureService.fetchAdventureById(widget.adventureId);
     if (mounted) {
@@ -56,6 +58,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
         _isLoading = false;
         if (a != null) {
           _titleCtrl = TextEditingController(text: a.title);
+          _subtitleCtrl = TextEditingController(text: a.subtitle ?? '');
           _descCtrl = TextEditingController(text: a.description ?? '');
           _minLvlCtrl = TextEditingController(text: a.levelMin?.toString() ?? '1');
           _maxLvlCtrl = TextEditingController(text: a.levelMax?.toString() ?? '20');
@@ -67,7 +70,6 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
     }
   }
 
-  // 🔹 Salva le modifiche (solo Master)
   Future<void> _save() async {
     if (_adv == null) return;
     
@@ -75,6 +77,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       _adv!.id,
       {
         'title': _titleCtrl.text.trim(),
+        'subtitle': _subtitleCtrl.text.trim(),
         'description': _descCtrl.text.trim(),
         'level_min': int.tryParse(_minLvlCtrl.text),
         'level_max': int.tryParse(_maxLvlCtrl.text),
@@ -90,19 +93,20 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
           _adv = updated;
           _isEditing = false;
         });
-        _showMsg('✅ Campagna aggiornata', const Color(0xFF00C853));
       } else {
         _showMsg('❌ Errore nel salvataggio', Colors.red);
       }
     }
   }
 
-  // 🔹 Toggle stato Active/Ended (solo Master)
   Future<void> _toggleStatus() async {
     final updated = await AdventureService.toggleStatus(_adv!.id);
     if (mounted && updated != null) {
       setState(() => _adv = updated);
-      _showMsg('Stato modificato', Colors.blue);
+      _showMsg(
+        updated.status == AdventureStatus.active ? '🟢 Campagna attiva' : '🔴 Campagna conclusa',
+        updated.status == AdventureStatus.active ? const Color(0xFF00C853) : Colors.redAccent,
+      );
     }
   }
 
@@ -221,6 +225,25 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                             style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                           ),
                     const SizedBox(height: 8),
+
+                    _isEditing
+                        ? TextField(
+                            controller: _subtitleCtrl,
+                            style: const TextStyle(color: Colors.white70, fontSize: 14),
+                            decoration: const InputDecoration(
+                              border: UnderlineInputBorder(),
+                              hintText: 'Sottotitolo (es: "Campagna Epica • Livelli 1-10")',
+                            ),
+                          )
+                        : (_adv!.subtitle != null && _adv!.subtitle!.isNotEmpty
+                            ? Text(
+                                _adv!.subtitle!,
+                                style: const TextStyle(color: Colors.white54, fontSize: 14, fontStyle: FontStyle.italic),
+                              )
+                            : const SizedBox.shrink()),
+                    
+                    const SizedBox(height: 8),
+
                     if (_adv!.description != null && _adv!.description!.isNotEmpty)
                       _isEditing
                           ? TextField(
@@ -291,11 +314,22 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                 
                 _StatBox(
                   icon: Icons.group,
-                  label: 'Giocatori',
-                  child: Text(
-                    '${_adv!.currentPlayers ?? 0}/${_adv!.maxPlayers ?? 0}',
-                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
+                  label: 'Max Giocatori',
+                  child: _isEditing
+                      ? TextField(
+                          controller: _maxPlayersCtrl,
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                          decoration: const InputDecoration(
+                            contentPadding: EdgeInsets.symmetric(vertical: 8),
+                            border: UnderlineInputBorder(),
+                          ),
+                        )
+                      : Text(
+                          '${_adv!.currentPlayers ?? 0}/${_adv!.maxPlayers ?? 0}',
+                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
                 ),
 
                 _StatBox(
@@ -373,7 +407,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                 trailing: Switch(
                   value: _isOneShot,
                   activeColor: const Color(0xFF00B0FF),
-                  onChanged: _isEditing ? (v) => setState(() => _isOneShot = v) : null,
+                  onChanged: _isEditing ? (v) => setState(() => _isOneShot = v) : null, 
                 ),
               ),
 
@@ -391,7 +425,12 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                   shadowColor: const Color(0xFF00B0FF).withOpacity(0.4),
                 ),
                 onPressed: () {
-                  _showMsg('🎲 Avvio sessione in sviluppo...', const Color(0xFF6A1B9A));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => GameSessionScreen(adventure: _adv!),
+                    ),
+                  );
                 },
                 icon: const Icon(Icons.play_arrow, size: 28),
                 label: const Text(

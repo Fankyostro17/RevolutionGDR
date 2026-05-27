@@ -96,16 +96,26 @@ class AdventureModel:
     def update(adventure_id: str, user_id: str, **kwargs) -> dict | None:
         try:
             adventure = AdventureModel.get_by_id(adventure_id)
-            if not adventure or adventure.get('created_by') != user_id: return None
+            if not adventure or adventure.get('created_by') != user_id: 
+                return None
 
-            allowed = ['title', 'subtitle', 'description', 'status', 'next_session', 
-                       'level_min', 'level_max', 'max_players', 'is_one_shot']
+            allowed = [
+                'title', 'subtitle', 'description', 'status', 'next_session',
+                'level_min', 'level_max', 'max_players', 'is_one_shot'
+            ]
             updates = {k: v for k, v in kwargs.items() if k in allowed and v is not None}
-            if not updates: return adventure
+            
+            if not updates: 
+                return adventure
 
             set_clause = ", ".join([f"{k} = %s" for k in updates.keys()])
             values = list(updates.values()) + [adventure_id]
-            Database.execute_query(f"UPDATE {AdventureModel.TABLE} SET {set_clause} WHERE id = %s", tuple(values), fetch=False)
+            
+            Database.execute_query(
+                f"UPDATE {AdventureModel.TABLE} SET {set_clause} WHERE id = %s", 
+                tuple(values), 
+                fetch=False
+            )
             return AdventureModel.get_by_id(adventure_id)
         except Exception as e:
             print(f"❌ Errore update: {e}")
