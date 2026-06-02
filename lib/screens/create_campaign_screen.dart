@@ -11,31 +11,28 @@ class CreateCampaignScreen extends StatefulWidget {
 class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
   final _formKey = GlobalKey<FormState>();
   
-  // 🔹 Controllers per i TextField
   final _titleController = TextEditingController();
-  final _subtitleController = TextEditingController();        // ← NUOVO
+  final _subtitleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _minLevelController = TextEditingController(text: '1');      // ← NUOVO
-  final _maxLevelController = TextEditingController(text: '20');     // ← NUOVO
-  final _maxPlayersController = TextEditingController(text: '0');    // ← NUOVO
+  final _minLevelController = TextEditingController(text: '1');
+  final _maxLevelController = TextEditingController(text: '20');
+  final _maxPlayersController = TextEditingController(text: '0');
   
-  // 🔹 Variabili per data e one-shot
   DateTime? _nextSessionDate;
-  bool _isOneShot = false;                                    // ← NUOVO
+  bool _isOneShot = false;
   bool _isLoading = false;
 
   @override
   void dispose() {
     _titleController.dispose();
-    _subtitleController.dispose();                             // ← NUOVO
+    _subtitleController.dispose();
     _descriptionController.dispose();
-    _minLevelController.dispose();                             // ← NUOVO
-    _maxLevelController.dispose();                             // ← NUOVO
-    _maxPlayersController.dispose();                           // ← NUOVO
+    _minLevelController.dispose();
+    _maxLevelController.dispose();
+    _maxPlayersController.dispose();
     super.dispose();
   }
 
-  // 🔹 Picker per la data
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -57,7 +54,6 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
     if (picked != null) setState(() => _nextSessionDate = picked);
   }
 
-  // 🔹 Gestione creazione campagna
   Future<void> _handleCreateCampaign() async {
     if (!_formKey.currentState!.validate()) return;
     if (_nextSessionDate == null) {
@@ -86,11 +82,11 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (adventure != null) {
-        Navigator.pop(context, true); // ← true = successo
+        Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('❌ Errore nella creazione. Riprova.'),
+            content: Text('Errore nella creazione. Riprova.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -118,7 +114,6 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 🔹 Titolo (obbligatorio)
               TextFormField(
                 controller: _titleController,
                 style: const TextStyle(color: Colors.white),
@@ -136,7 +131,6 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 🔹 Sottotitolo (opzionale)
               TextFormField(
                 controller: _subtitleController,
                 style: const TextStyle(color: Colors.white),
@@ -153,7 +147,6 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 🔹 Livello Range (MIN - MAX)
               Row(
                 children: [
                   Expanded(
@@ -197,7 +190,6 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 🔹 Max Giocatori
               TextFormField(
                 controller: _maxPlayersController,
                 keyboardType: TextInputType.number,
@@ -216,7 +208,6 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 🔹 Prossima Sessione (Date Picker)
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 tileColor: const Color(0xFF1E1E3F),
@@ -234,7 +225,6 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 🔹 One-Shot Toggle
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 tileColor: const Color(0xFF1E1E3F),
@@ -251,7 +241,6 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 🔹 Descrizione (opzionale)
               TextFormField(
                 controller: _descriptionController,
                 style: const TextStyle(color: Colors.white),
@@ -270,7 +259,6 @@ class _CreateCampaignScreenState extends State<CreateCampaignScreen> {
               ),
               const SizedBox(height: 32),
 
-              // 🔹 Pulsante Crea
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF00B0FF),

@@ -2,12 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 import '../models/adventure.dart';
+import '../config.dart';
 
 class AdventureService {
-  // 🔹 CONFIGURAZIONE BACKEND
-  // Android Emulator: 10.0.2.2
-  // iOS Simulator / Web: localhost o 127.0.0.1
-  static const String _baseUrl = 'http://127.0.0.1:8000/api';
+  static const String _baseUrl = AppConfig.baseUrl;
 
   static Future<Adventure?> createCampaign({
     required String title,

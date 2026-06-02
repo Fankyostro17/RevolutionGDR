@@ -38,7 +38,7 @@ class _JoinCampaignScreenState extends State<JoinCampaignScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('❌ Codice non valido o campagna non trovata'),
+            content: Text('Codice non valido o campagna non trovata'),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 3),
           ),
@@ -52,7 +52,7 @@ class _JoinCampaignScreenState extends State<JoinCampaignScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('🔗 Unisciti a una Campagna'),
+        title: const Text('Unisciti a una Campagna'),
         backgroundColor: const Color(0xFF1A1A2E),
         elevation: 0,
         leading: IconButton(

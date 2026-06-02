@@ -17,6 +17,16 @@ dependencies:
   audioplayers: ^6.1.0
   file_picker: ^8.1.2
   socket_io_client: ^2.0.3
+  share_plus: ^10.0.2
+  app_links: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/logo/logo.png"
+  adaptive_icon_background: "#1A1A2E"
+  adaptive_icon_foreground: "assets/images/logo/logo.png"
 
 dev_dependencies:
   flutter_test:
@@ -28,3 +38,7 @@ flutter:
 
   assets:
     - assets/
+    - assets/svg/
+    - assets/audio/
+    - assets/sfx/
+    - assets/images/logo/

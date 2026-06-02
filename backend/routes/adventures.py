@@ -1,11 +1,18 @@
 from database import Database
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app, send_from_directory
 import uuid
 from models.adventure import AdventureModel
+from models.adventure_file import AdventureFileModel
 from utils.jwt_handler import JWTHandler
 from models.user import UserModel
+from werkzeug.utils import secure_filename
+import os
+from config import Config
 
 adventures_bp = Blueprint('adventures', __name__, url_prefix='/api/adventures')
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in Config.ALLOWED_EXTENSIONS
 
 @adventures_bp.route('', methods=['POST'])
 def create_adventure():
@@ -275,3 +282,134 @@ def _format_dates_for_flutter(data: dict) -> dict:
                 except:
                     pass
     return data
+
+@adventures_bp.route('/<adventure_id>/upload', methods=['POST'])
+def upload_file(adventure_id: str):
+    auth_header = request.headers.get('Authorization')
+    token = JWTHandler.token_from_header(auth_header)
+    if not token:
+        return jsonify({'error': 'Token mancante'}), 401
+    
+    payload = JWTHandler.verify_token(token)
+    if not payload:
+        return jsonify({'error': 'Token non valido'}), 401
+
+    adventure = AdventureModel.get_by_id(adventure_id)
+    if not adventure or adventure.get('created_by') != payload['user_id']:
+        return jsonify({'error': 'Solo il Master può caricare file'}), 403
+
+    if 'file' not in request.files:
+        return jsonify({'error': 'Nessun file nella richiesta'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'Nessun file selezionato'}), 400
+
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        unique_filename = f"{adventure_id}_{uuid.uuid4().hex[:8]}_{filename}"
+        
+        os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
+        filepath = os.path.join(Config.UPLOAD_FOLDER, unique_filename)
+        file.save(filepath)
+        
+        file_url = f"{request.host_url.rstrip('/')}/api/adventures/uploads/{unique_filename}"
+        file_size = os.path.getsize(filepath)
+        
+        file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+        if file_ext in ['jpg', 'jpeg', 'png']:
+            file_type = 'image'
+        elif file_ext == 'pdf':
+            file_type = 'document'
+        elif file_ext in ['mp3', 'wav', 'ogg', 'm4a']:
+            file_type = request.form.get('audio_type', 'music')
+        else:
+            file_type = 'document'
+        
+        db_file = AdventureFileModel.create(
+            adventure_id=adventure_id,
+            file_name=filename,
+            file_url=file_url,
+            file_type=file_type,
+            file_size=file_size
+        )
+        
+        if not db_file:
+            os.remove(filepath)
+            return jsonify({'error': 'Errore nel salvataggio del file'}), 500
+        
+        return jsonify({
+            'message': 'File caricato con successo',
+            'file_name': filename,
+            'url': file_url,
+            'size': file_size,
+            'file_type': file_type,
+            'file_id': db_file['id']
+        }), 200
+    
+    return jsonify({'error': 'Tipo di file non consentito'}), 400
+
+@adventures_bp.route('/<adventure_id>/files', methods=['GET'])
+def get_adventure_files(adventure_id: str):
+    """Ottiene tutti i file di un'avventura"""
+    auth_header = request.headers.get('Authorization')
+    token = JWTHandler.token_from_header(auth_header)
+    if not token:
+        return jsonify({'error': 'Token mancante'}), 401
+    
+    payload = JWTHandler.verify_token(token)
+    if not payload:
+        return jsonify({'error': 'Token non valido'}), 401
+
+    files = AdventureFileModel.get_by_adventure(adventure_id)
+    
+    formatted_files = []
+    for f in files:
+        formatted_files.append({
+            'id': f['id'],
+            'name': f['file_name'],
+            'url': f['file_url'],
+            'type': f['file_type'],
+            'size': f'{(f["file_size"] / 1024 / 1024):.1f} MB'
+        })
+    
+    return jsonify({'files': formatted_files}), 200
+
+@adventures_bp.route('/<adventure_id>/files/<filename>', methods=['DELETE'])
+def delete_file(adventure_id: str, filename: str):
+    auth_header = request.headers.get('Authorization')
+    token = JWTHandler.token_from_header(auth_header)
+    if not token:
+        return jsonify({'error': 'Token mancante'}), 401
+    
+    payload = JWTHandler.verify_token(token)
+    
+    adventure = AdventureModel.get_by_id(adventure_id)
+    if not adventure or adventure.get('created_by') != payload['user_id']:
+        return jsonify({'error': 'Solo il Master può eliminare file'}), 403
+
+    filepath = os.path.join(Config.UPLOAD_FOLDER, filename)
+    if os.path.exists(filepath):
+        os.remove(filepath)
+        
+        AdventureFileModel.delete_by_filename(filename, adventure_id)
+        
+        return jsonify({'message': 'File eliminato'}), 200
+    
+    return jsonify({'error': 'File non trovato'}), 404
+
+@adventures_bp.route('/uploads/<filename>', methods=['GET'])
+def serve_upload(filename):
+    response = send_from_directory(Config.UPLOAD_FOLDER, filename)
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    
+    if filename.endswith('.mp3'):
+        response.headers['Content-Type'] = 'audio/mpeg'
+    elif filename.endswith('.wav'):
+        response.headers['Content-Type'] = 'audio/wav'
+    elif filename.endswith('.ogg'):
+        response.headers['Content-Type'] = 'audio/ogg'
+    elif filename.endswith('.m4a'):
+        response.headers['Content-Type'] = 'audio/mp4'
+    
+    return response

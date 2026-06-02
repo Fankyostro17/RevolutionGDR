@@ -4,17 +4,14 @@ import '../screens/campaign_detail_screen.dart';
 import 'package:intl/intl.dart';
 
 class AdventureCard extends StatelessWidget {
-  // 🔹 Dati base
   final String title;
   final String subtitle;
   final String? description;
   final AdventureRole role;
-  
-  // 🔹 Date
+
   final DateTime? nextSession;
   final DateTime? lastSession;
   
-  // 🔹 NUOVI CAMPI
   final int? levelMin;
   final int? levelMax;
   final int? maxPlayers;
@@ -22,29 +19,24 @@ class AdventureCard extends StatelessWidget {
   final String? joinCode;
   final bool isOneShot;
   
-  // 🔹 Metadati
   final String adventureId;
   final String? createdBy;
   final AdventureStatus status;
   
-  // 🔹 Interazione
   final VoidCallback? onTap;
   final bool isLocked;
 
   const AdventureCard({
     super.key,
     
-    // 🔹 Dati base (obbligatori)
     required this.title,
     required this.subtitle,
     this.description,
     required this.role,
     
-    // 🔹 Date (opzionali)
     this.nextSession,
     this.lastSession,
     
-    // 🔹 NUOVI CAMPI per livello, giocatori, codice, one-shot
     this.levelMin,
     this.levelMax,
     this.maxPlayers,
@@ -52,12 +44,10 @@ class AdventureCard extends StatelessWidget {
     this.joinCode,
     this.isOneShot = false,
     
-    // 🔹 Metadati per navigazione e sicurezza
     required this.adventureId,
     this.createdBy,
     this.status = AdventureStatus.active,
     
-    // 🔹 Interazione
     this.onTap,
     this.isLocked = false,
   });
@@ -187,7 +177,6 @@ class AdventureCard extends StatelessWidget {
                         spacing: 8,
                         runSpacing: 4,
                         children: [
-                          // 🔹 Livello Range (Master e Player)
                           if (!isLocked && (levelMin != null || levelMax != null))
                             _InfoChip(
                               icon: Icons.star,
@@ -196,7 +185,6 @@ class AdventureCard extends StatelessWidget {
                               isTextDark: true,
                             ),
                           
-                          // 🔹 Giocatori: current/max (dinamico dal DB)
                           if (!isLocked && maxPlayers != null)
                             _InfoChip(
                               icon: Icons.group,
@@ -204,7 +192,6 @@ class AdventureCard extends StatelessWidget {
                               color: const Color(0xFF29B6F6),
                             ),
                           
-                          // 🔹 Prossima sessione (Master)
                           if (!isLocked && nextSession != null && isMaster)
                             _InfoChip(
                               icon: Icons.calendar_today,
@@ -212,7 +199,6 @@ class AdventureCard extends StatelessWidget {
                               color: const Color(0xFF00B0FF),
                             ),
                           
-                          // 🔹 Ultima sessione (Player)
                           if (!isLocked && lastSession != null && !isMaster)
                             _InfoChip(
                               icon: Icons.history,
@@ -220,21 +206,12 @@ class AdventureCard extends StatelessWidget {
                               color: const Color(0xFF5E35B1),
                             ),
                           
-                          // 🔹 One-Shot badge
                           if (!isLocked && isOneShot)
                             _InfoChip(
                               icon: Icons.bolt,
                               label: 'One-Shot',
                               color: const Color(0xFF7E57C2),
                             ),
-                          
-                          // 🔹 Stato Ended
-                          /*if (status == AdventureStatus.ended)
-                            _InfoChip(
-                              icon: Icons.flag,
-                              label: 'ENDED',
-                              color: Colors.redAccent,
-                            ),*/
 
                           if (!isLocked && status != AdventureStatus.active)
                             _InfoChip(

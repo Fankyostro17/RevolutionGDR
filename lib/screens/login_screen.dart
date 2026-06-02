@@ -40,7 +40,6 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isLoading = false);
       
       if (success) {
-        // 🔹 Navigazione alla dashboard con replacement (non si può tornare indietro al login)
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const MainDashboardScreen()),
@@ -72,7 +71,6 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const SizedBox(height: 40),
                 
-                // 🔹 Logo/Titolo
                 const Icon(
                   Icons.shield_outlined,
                   size: 80,
@@ -96,7 +94,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 const SizedBox(height: 48),
                 
-                // 🔹 Campo Email/Nickname
                 TextFormField(
                   controller: _identifierController,
                   style: const TextStyle(color: Colors.white),
@@ -122,7 +119,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 const SizedBox(height: 24),
                 
-                // 🔹 Campo Password
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
@@ -159,15 +155,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 const SizedBox(height: 8),
                 
-                // 🔹 Forgot password (placeholder)
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () {
-                      // 🔹 Future: schermata recupero password
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('🔧 Funzione in sviluppo'),
+                          content: Text('Funzione in sviluppo'),
                           backgroundColor: Color(0xFF6A1B9A),
                         ),
                       );
@@ -181,7 +175,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 const SizedBox(height: 32),
                 
-                // 🔹 Pulsante Login
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF00B0FF),
@@ -211,7 +204,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 const SizedBox(height: 24),
                 
-                // 🔹 Link a Registrazione
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -239,7 +231,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 const SizedBox(height: 16),
                 
-                // 🔹 Torna al portale (opzionale)
                 TextButton.icon(
                   onPressed: () => Navigator.pop(context, true),
                   icon: const Icon(Icons.arrow_back, size: 16, color: Colors.white38),

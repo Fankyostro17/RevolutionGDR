@@ -37,7 +37,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (_dateOfBirth == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('⚠️ Seleziona la tua data di nascita'),
+          content: Text('Seleziona la tua data di nascita'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -46,7 +46,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_acceptedTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('⚠️ Devi accettare i termini per continuare'),
+          content: Text('Devi accettare i termini per continuare'),
           backgroundColor: Colors.orange,
         ),
       );
@@ -68,12 +68,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Registrazione completata! Ora accedi.'),
+            content: Text('Registrazione completata! Ora accedi.'),
             backgroundColor: Color(0xFF00C853),
             duration: Duration(seconds: 3),
           ),
         );
-        // 🔹 Torna al login dopo registrazione riuscita
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -81,7 +80,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('❌ Registrazione fallita. Email o nickname già in uso.'),
+            content: Text('Registrazione fallita. Email o nickname già in uso.'),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 4),
           ),
@@ -110,9 +109,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // 🔹 Titolo
                 const Text(
-                  '🪄 Crea il tuo Personaggio',
+                  'Crea il tuo Personaggio',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
@@ -128,7 +126,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 
                 const SizedBox(height: 32),
                 
-                // 🔹 Nickname
                 TextFormField(
                   controller: _nicknameController,
                   style: const TextStyle(color: Colors.white),
@@ -156,7 +153,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 
                 const SizedBox(height: 20),
                 
-                // 🔹 Email
                 TextFormField(
                   controller: _emailController,
                   style: const TextStyle(color: Colors.white),
@@ -185,7 +181,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 
                 const SizedBox(height: 20),
                 
-                // 🔹 Data di nascita
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(
@@ -202,7 +197,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       context: context,
                       initialDate: DateTime(2005, 1, 1),
                       firstDate: DateTime(1950),
-                      lastDate: DateTime.now().subtract(const Duration(days: 365 * 13)), // Min 13 anni
+                      lastDate: DateTime.now().subtract(const Duration(days: 365 * 13)),
                       builder: (ctx, child) => Theme(
                         data: Theme.of(ctx).copyWith(
                           colorScheme: ColorScheme.dark(
@@ -223,7 +218,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 
                 const SizedBox(height: 20),
                 
-                // 🔹 Password
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
@@ -259,7 +253,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 
                 const SizedBox(height: 20),
                 
-                // 🔹 Conferma Password
                 TextFormField(
                   controller: _confirmPasswordController,
                   obscureText: _obscureConfirmPassword,
@@ -292,7 +285,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 
                 const SizedBox(height: 24),
                 
-                // 🔹 Checkbox Termini
                 Row(
                   children: [
                     Checkbox(
@@ -334,7 +326,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 
                 const SizedBox(height: 32),
                 
-                // 🔹 Pulsante Registrati
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF00B0FF),
@@ -364,7 +355,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 
                 const SizedBox(height: 24),
                 
-                // 🔹 Link a Login
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

@@ -2,18 +2,14 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
+import '../config.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
   AuthService._internal();
 
-  // 🔹 CONFIGURAZIONE BACKEND PYTHON
-  // Android Emulator: usa 10.0.2.2 invece di localhost
-  // iOS Simulator: usa localhost
-  // Dispositivo fisico: usa l'IP della tua rete (es. 192.168.1.100)
-  // static const String _baseUrl = 'http://10.0.2.2:8000/api';
-  static const String _baseUrl = 'http://127.0.0.1:8000/api';
+  static const String _baseUrl = AppConfig.baseUrl;
 
   AppUser? _currentUser;
   String? _authToken;
@@ -165,6 +161,10 @@ class AuthService {
       print('❌ Errore refresh user: $e');
       return false;
     }
+  }
+
+  get getToken {
+    return _authToken;
   }
 
   Map<String, String> get authHeaders {

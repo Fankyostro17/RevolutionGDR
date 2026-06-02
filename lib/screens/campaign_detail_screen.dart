@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/adventure.dart';
 import '../services/adventure_service.dart';
 import '../services/auth_service.dart';
+import 'login_screen.dart';
 import 'game_session_screen.dart';
 
 class CampaignDetailScreen extends StatefulWidget {
@@ -16,12 +18,10 @@ class CampaignDetailScreen extends StatefulWidget {
 }
 
 class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
-  // 🔹 Stato e dati
   Adventure? _adv;
   bool _isLoading = true;
   bool _isEditing = false;
 
-  // 🔹 Controllers per i TextField in modalità modifica
   late TextEditingController _titleCtrl;
   late TextEditingController _subtitleCtrl;
   late TextEditingController _descCtrl;
@@ -29,7 +29,6 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
   late TextEditingController _maxLvlCtrl;
   late TextEditingController _maxPlayersCtrl;
   
-  // 🔹 Variabili per data e one-shot
   DateTime? _nextSession;
   bool _isOneShot = false;
 
@@ -64,7 +63,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
           _maxLvlCtrl = TextEditingController(text: a.levelMax?.toString() ?? '20');
           _maxPlayersCtrl = TextEditingController(text: a.maxPlayers?.toString() ?? '0');
           _nextSession = a.nextSession;
-          _isOneShot = a.isOneShot;
+          _isOneShot = a.isOneShot ?? false;
         }
       });
     }
@@ -91,10 +90,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       if (updated != null) {
         setState(() {
           _adv = updated;
+          _isOneShot = updated.isOneShot ?? false;
           _isEditing = false;
         });
-      } else {
-        _showMsg('❌ Errore nel salvataggio', Colors.red);
       }
     }
   }
@@ -102,11 +100,9 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
   Future<void> _toggleStatus() async {
     final updated = await AdventureService.toggleStatus(_adv!.id);
     if (mounted && updated != null) {
-      setState(() => _adv = updated);
-      _showMsg(
-        updated.status == AdventureStatus.active ? '🟢 Campagna attiva' : '🔴 Campagna conclusa',
-        updated.status == AdventureStatus.active ? const Color(0xFF00C853) : Colors.redAccent,
-      );
+      setState(() {
+        _adv = updated;
+      });
     }
   }
 
@@ -115,7 +111,7 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       context: context,
       builder: (c) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
-        title: const Text('🗑️ Eliminare Campagna?', style: TextStyle(color: Colors.white)),
+        title: const Text('Eliminare Campagna?', style: TextStyle(color: Colors.white)),
         content: const Text(
           'Tutti i giocatori verranno rimossi permanentemente.\nQuesta azione è irreversibile.',
           style: TextStyle(color: Colors.white70),
@@ -138,21 +134,24 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
       final ok = await AdventureService.deleteCampaign(_adv!.id);
       if (mounted) {
         if (ok) {
-          Navigator.pop(context, true); 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('🗑️ Campagna eliminata'), backgroundColor: Colors.red),
-          );
-        } else {
-          _showMsg('Errore eliminazione', Colors.red);
+          Navigator.pop(context, true);
         }
       }
     }
   }
 
-  void _showMsg(String msg, Color col) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: col, duration: const Duration(seconds: 2)),
-    );
+  void _shareCampaign() {
+    if (_adv == null || _adv!.joinCode == null) return;
+    
+    final deepLink = 'revolutiongdr://join?code=${_adv!.joinCode}';
+    
+    final shareText = '🐉 *INVITO RPG*\n\n'
+        'Unisciti alla mia campagna: *${_adv!.title}*\n\n'
+        '🔑 *Clicca qui per unirti automaticamente:* 🔑\n'
+        '$deepLink\n\n'
+        '(Se il link non funziona, usa il codice manuale: *${_adv!.joinCode}*)';
+        
+    Share.share(shareText, subject: 'Invito Campagna RPG: ${_adv!.title}');
   }
 
   @override
@@ -204,210 +203,236 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
               ),
             const SizedBox(height: 16),
 
-            Card(
-              color: const Color(0xFF1E1E3F),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    _isEditing
-                        ? TextField(
-                            controller: _titleCtrl,
-                            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                            decoration: const InputDecoration(
-                              border: UnderlineInputBorder(),
-                              hintText: 'Titolo campagna',
-                            ),
-                          )
-                        : Text(
-                            _adv!.title,
-                            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                          ),
-                    const SizedBox(height: 8),
-
-                    _isEditing
-                        ? TextField(
-                            controller: _subtitleCtrl,
-                            style: const TextStyle(color: Colors.white70, fontSize: 14),
-                            decoration: const InputDecoration(
-                              border: UnderlineInputBorder(),
-                              hintText: 'Sottotitolo (es: "Campagna Epica • Livelli 1-10")',
-                            ),
-                          )
-                        : (_adv!.subtitle != null && _adv!.subtitle!.isNotEmpty
-                            ? Text(
-                                _adv!.subtitle!,
-                                style: const TextStyle(color: Colors.white54, fontSize: 14, fontStyle: FontStyle.italic),
-                              )
-                            : const SizedBox.shrink()),
-                    
-                    const SizedBox(height: 8),
-
-                    if (_adv!.description != null && _adv!.description!.isNotEmpty)
+            Center(
+              child: Card(
+                color: const Color(0xFF1E1E3F),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
                       _isEditing
                           ? TextField(
-                              controller: _descCtrl,
-                              maxLines: 3,
-                              style: const TextStyle(color: Colors.white70, fontSize: 14),
+                              controller: _titleCtrl,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                               decoration: const InputDecoration(
                                 border: UnderlineInputBorder(),
-                                hintText: 'Descrizione...',
+                                hintText: 'Titolo campagna',
                               ),
                             )
                           : Text(
-                              _adv!.description!,
-                              style: const TextStyle(color: Colors.white70, fontSize: 14),
+                              _adv!.title,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                             ),
-                  ],
+                      const SizedBox(height: 8),
+
+                      _isEditing
+                          ? TextField(
+                              controller: _subtitleCtrl,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.white70, fontSize: 14),
+                              decoration: const InputDecoration(
+                                border: UnderlineInputBorder(),
+                                hintText: 'Sottotitolo (es: "Campagna Epica • Livelli 1-10")',
+                              ),
+                            )
+                          : (_adv!.subtitle != null && _adv!.subtitle!.isNotEmpty
+                              ? Text(
+                                  _adv!.subtitle!,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: Colors.white54, fontSize: 14, fontStyle: FontStyle.italic),
+                                )
+                              : const SizedBox.shrink()),
+                      
+                      const SizedBox(height: 8),
+
+                      if (_adv!.description != null && _adv!.description!.isNotEmpty)
+                        _isEditing
+                            ? TextField(
+                                controller: _descCtrl,
+                                textAlign: TextAlign.center,
+                                maxLines: 3,
+                                style: const TextStyle(color: Colors.white70, fontSize: 14),
+                                decoration: const InputDecoration(
+                                  border: UnderlineInputBorder(),
+                                  hintText: 'Descrizione...',
+                                ),
+                              )
+                            : Text(
+                                _adv!.description!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(color: Colors.white70, fontSize: 14),
+                              ),
+                    ],
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 16),
 
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1.8,
-              children: [
-                _StatBox(
-                  icon: Icons.star,
-                  label: 'Livello',
-                  child: _isEditing
-                      ? Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _minLvlCtrl,
-                                keyboardType: TextInputType.number,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(color: Colors.white, fontSize: 16),
-                                decoration: const InputDecoration(
-                                  contentPadding: EdgeInsets.symmetric(vertical: 8),
-                                  border: UnderlineInputBorder(),
-                                ),
-                              ),
+            _StatBox(
+              icon: Icons.star,
+              label: 'Livello',
+              child: _isEditing
+                  ? Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _minLvlCtrl,
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.white, fontSize: 16),
+                            decoration: const InputDecoration(
+                              contentPadding: EdgeInsets.symmetric(vertical: 8),
+                              border: UnderlineInputBorder(),
                             ),
-                            const Text('-', style: TextStyle(color: Colors.white, fontSize: 16)),
-                            Expanded(
-                              child: TextField(
-                                controller: _maxLvlCtrl,
-                                keyboardType: TextInputType.number,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(color: Colors.white, fontSize: 16),
-                                decoration: const InputDecoration(
-                                  contentPadding: EdgeInsets.symmetric(vertical: 8),
-                                  border: UnderlineInputBorder(),
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
-                      : Text(
-                          '${_adv!.levelMin ?? 1}-${_adv!.levelMax ?? 20}',
-                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-                        ),
-                ),
-                
-                _StatBox(
-                  icon: Icons.group,
-                  label: 'Max Giocatori',
-                  child: _isEditing
-                      ? TextField(
-                          controller: _maxPlayersCtrl,
-                          keyboardType: TextInputType.number,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-                          decoration: const InputDecoration(
-                            contentPadding: EdgeInsets.symmetric(vertical: 8),
-                            border: UnderlineInputBorder(),
                           ),
-                        )
-                      : Text(
-                          '${_adv!.currentPlayers ?? 0}/${_adv!.maxPlayers ?? 0}',
-                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
                         ),
-                ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8),
+                          child: Text('-', style: TextStyle(color: Colors.white, fontSize: 16)),
+                        ),
+                        Expanded(
+                          child: TextField(
+                            controller: _maxLvlCtrl,
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.white, fontSize: 16),
+                            decoration: const InputDecoration(
+                              contentPadding: EdgeInsets.symmetric(vertical: 8),
+                              border: UnderlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Text(
+                      '${_adv!.levelMin ?? 1}-${_adv!.levelMax ?? 20}',
+                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+            ),
+            const SizedBox(height: 12),
 
-                _StatBox(
-                  icon: Icons.calendar_today,
-                  label: 'Prossima Sessione',
-                  child: GestureDetector(
-                    onTap: _isEditing
-                        ? () async {
-                            final d = await showDatePicker(
-                              context: context,
-                              initialDate: _nextSession ?? DateTime.now(),
-                              firstDate: DateTime.now(),
-                              lastDate: DateTime(2030),
-                              builder: (ctx, child) => Theme(
-                                data: Theme.of(ctx).copyWith(
-                                  colorScheme: ColorScheme.dark(
-                                    primary: const Color(0xFF00B0FF),
-                                    surface: const Color(0xFF1A1A2E),
-                                  ),
-                                ),
-                                child: child!,
+            _StatBox(
+              icon: Icons.group,
+              label: 'Max Giocatori',
+              child: _isEditing
+                  ? TextField(
+                      controller: _maxPlayersCtrl,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                      decoration: const InputDecoration(
+                        contentPadding: EdgeInsets.symmetric(vertical: 8),
+                        border: UnderlineInputBorder(),
+                      ),
+                    )
+                  : Text(
+                      '${_adv!.currentPlayers ?? 0}/${_adv!.maxPlayers ?? 0}',
+                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+            ),
+            const SizedBox(height: 12),
+
+            _StatBox(
+              icon: Icons.calendar_today,
+              label: 'Prossima Sessione',
+              child: GestureDetector(
+                onTap: _isEditing
+                    ? () async {
+                        final d = await showDatePicker(
+                          context: context,
+                          initialDate: _nextSession ?? DateTime.now(),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime(2030),
+                          builder: (ctx, child) => Theme(
+                            data: Theme.of(ctx).copyWith(
+                              colorScheme: ColorScheme.dark(
+                                primary: const Color(0xFF00B0FF),
+                                surface: const Color(0xFF1A1A2E),
                               ),
-                            );
-                            if (d != null) setState(() => _nextSession = d);
-                          }
-                        : null,
-                    child: Text(
-                      _nextSession == null
-                          ? 'Non impostata'
-                          : DateFormat('dd/MM/yyyy').format(_nextSession!),
-                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                            ),
+                            child: child!,
+                          ),
+                        );
+                        if (d != null) setState(() => _nextSession = d);
+                      }
+                    : null,
+                child: Text(
+                  _nextSession == null
+                      ? 'Non impostata'
+                      : DateFormat('dd/MM/yyyy').format(_nextSession!),
+                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            _StatBox(
+              icon: Icons.qr_code,
+              label: 'Codice Unione',
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _adv!.joinCode ?? '---',
+                    style: const TextStyle(
+                      color: Color(0xFF00B0FF),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
                     ),
                   ),
-                ),
-                
-                _StatBox(
-                  icon: Icons.qr_code,
-                  label: 'Codice Unione',
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        _adv!.joinCode ?? '---',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 2,
+                  const SizedBox(width: 12),
+                  
+                  IconButton(
+                    icon: const Icon(Icons.copy, size: 20, color: Colors.white70),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: _adv!.joinCode ?? ''));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Codice copiato!'),
+                          backgroundColor: Colors.blue,
+                          duration: Duration(seconds: 2),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.copy, size: 16, color: Color(0xFF00B0FF)),
-                        onPressed: () {
-                          Clipboard.setData(ClipboardData(text: _adv!.joinCode ?? ''));
-                          _showMsg('📋 Codice copiato!', Colors.blue);
-                        },
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                ),
-              ],
+                  
+                  IconButton(
+                    icon: const Icon(Icons.share, size: 20, color: Colors.white70),
+                    onPressed: _shareCampaign,
+                    tooltip: 'Condividi invito',
+                  ),
+                ],
+              ),
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
 
             if (isMaster)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                tileColor: const Color(0xFF1E1E3F),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                title: const Text(
-                  'One-Shot (Sessione Unica)',
-                  style: TextStyle(color: Colors.white),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E1E3F),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                trailing: Switch(
-                  value: _isOneShot,
-                  activeColor: const Color(0xFF00B0FF),
-                  onChanged: _isEditing ? (v) => setState(() => _isOneShot = v) : null, 
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'One-Shot (Sessione Unica)',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                    Switch(
+                      value: _isOneShot,
+                      activeColor: const Color(0xFF00B0FF),
+                      onChanged: _isEditing ? (v) => setState(() => _isOneShot = v) : null,
+                    ),
+                  ],
                 ),
               ),
 
@@ -460,23 +485,23 @@ class _StatBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF1E1E3F),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white10),
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: const Color(0xFF00B0FF), size: 20),
           const SizedBox(height: 8),
           Text(
             label,
-            style: const TextStyle(color: Colors.white54, fontSize: 11),
+            style: const TextStyle(color: Colors.white54, fontSize: 12),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           child,
         ],
       ),

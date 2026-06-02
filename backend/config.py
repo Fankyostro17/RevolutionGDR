@@ -18,12 +18,16 @@ class Config:
     # App
     FLASK_ENV = os.getenv('FLASK_ENV', 'development')
     FLASK_DEBUG = os.getenv('FLASK_DEBUG', '1') == '1'
-    CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:*').split(',')
+    CORS_ORIGINS = os.getenv('CORS_ORIGINS', '*')
     
     # DB Connection Pool
     DB_POOL_NAME = 'rpg_portal_pool'
     DB_POOL_SIZE = 5
     DB_POOL_RESET_SESSION = True
+    
+    # File upload
+    UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf', 'mp3', 'wav', 'ogg', 'm4a'}
     
     @staticmethod
     def get_db_config():

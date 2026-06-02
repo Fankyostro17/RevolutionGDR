@@ -1,8 +1,8 @@
-from database import Database
 import uuid
 import string
-import random
+import secrets
 from datetime import datetime
+from database import Database
 
 class AdventureModel:
     TABLE = 'adventures'
@@ -10,7 +10,7 @@ class AdventureModel:
     
     @staticmethod
     def _generate_join_code() -> str:
-        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        return ''.join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
     
     @staticmethod
     def create(title: str, subtitle: str, description: str, created_by: str, 
@@ -107,6 +107,12 @@ class AdventureModel:
             
             if not updates: 
                 return adventure
+
+            if 'next_session' in updates and updates['next_session']:
+                try:
+                    updates['next_session'] = datetime.fromisoformat(updates['next_session'].replace('Z', '+00:00')).strftime('%Y-%m-%d %H:%M:%S')
+                except Exception:
+                    pass
 
             set_clause = ", ".join([f"{k} = %s" for k in updates.keys()])
             values = list(updates.values()) + [adventure_id]
